@@ -2,13 +2,13 @@
 #include <fstream>
 #include <string.h>
 #include <stdio.h>
-#include <pthread.h>
+#include <thread>
 
 using namespace std;
 
 /* definicion de limites */
 #define MAX_PING 5
-#define MAX_THREAD 5;
+static const int MAX_THREAD=5;
 
 /*
     Estructura de datos que almacena
@@ -23,6 +23,13 @@ struct ping
     string state;
 } pings[MAX_PING];
 
+/*
+    funcion que crea los pings
+*/
+void createPing(ping ping){
+    // aqui haria un ping por consola, si supiera como
+}
+
 int main(int argc, char *argv[])
 {
     // comprueba que se hayan ingresado la cant de arg necesarios
@@ -31,6 +38,7 @@ int main(int argc, char *argv[])
         cout << "No se ingresaron los argumentos suficientes (2) \n";
         return 1;
     }
+    /* manejo de archivos */ 
 
     // abrir el archivo de ips usando el argumento[1]
     std::ifstream ipFile;
@@ -52,4 +60,24 @@ int main(int argc, char *argv[])
             count++;
         }
     }
+
+    /* Manejo de hilos */
+    // creacion de hilos
+    thread threads[MAX_THREAD];
+
+    // inicializacion de hilos con la funcion que ejecuta ping
+    for(int i=0;i<MAX_THREAD;i++){
+        threads[i]=thread(createPing, pings[i]);
+    }
+
+    cout<< "Inicializando...\n";
+
+    // sincronzando los hilos al main
+    for (int i = 0; i < MAX_THREAD; i++)
+    {
+        threads[i].join();
+    }
+    
+
+    return 0;
 }
