@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <thread>
 #include <unistd.h>
-
-// weas del popen
 #include <memory>
 #include <cstdio>
 #include <stdexcept>
@@ -51,7 +49,6 @@ void createPing(ping ping, string cant)
     {
         throw std::runtime_error("popen() failed!");
     }
-    // cout<< command;
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
     {
         result += buffer.data();
@@ -61,7 +58,6 @@ void createPing(ping ping, string cant)
     {
         throw std::runtime_error("El ping fallo");
     }
-    // cout<< result;
 
     // busca las posiciones de los valores relevantes
     int transPos = result.find(" packets transmitted") - 1;
@@ -71,9 +67,7 @@ void createPing(ping ping, string cant)
     // copia y guarda el valor de los paquetes transmitidos
     char aux[1];
     result.copy(aux, 1, transPos);
-    // cout<<aux<<" \n";
     ping.pSend = atoi(aux);
-    //*aux= '\0';
 
     // copia y guarda el valor de los paquetes recividos
     result.copy(aux, 1, recPos);
@@ -131,7 +125,6 @@ int main(int argc, char *argv[])
         {
             // lee y guarda hasta el primer salto de linea
             ipFile >> ip;
-            // cout<< ip<<" \n";
             pings[count].ip = ip;
             count++;
         }
@@ -157,20 +150,6 @@ int main(int argc, char *argv[])
     {
         threads[i].join();
     }
-
-    // cout << "\n";
-
-    // for (int i = 0; i < MAX_THREAD; i++)
-    // {
-    //     if (pings[i].ip.length() >= 15)
-    //     {
-    //         cout << pings[i].ip << " \t" << pings[i].pSend << " \t" << pings[i].pRec << " \t" << pings[i].pLoss << " \t" << pings[i].state << "\n";
-    //     }
-    //     else
-    //     {
-    //         cout << pings[i].ip << " \t\t" << pings[i].pSend << " \t" << pings[i].pRec << " \t" << pings[i].pLoss << " \t" << pings[i].state << "\n";
-    //     }
-    // }
 
     return 0;
 }
