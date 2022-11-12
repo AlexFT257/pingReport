@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <cstring>
 #include <string.h>
 #include <stdio.h>
 #include <thread>
@@ -13,29 +14,29 @@
 using namespace std;
 
 /* definicion de limites */
-#define MAX_PING 5
 static const int MAX_THREAD = 5;
 
 /*
     Estructura de datos que almacena
     los reportes de los pings
 */
-struct ping
+class Ping
 {
+public:
     string ip;
     int pSend;
     int pRec;
     int pLoss;
     string state;
-} pings[MAX_PING];
+};
 
 /*
     funcion que crea los pings
 */
-void createPing(ping ping, string cant)
+void createPing(Ping *ping, string cant)
 {
     // creacion del comando de
-    string command = "ping " + ping.ip + " -c " + cant + " -q";
+    string command = "ping " + ping->ip + " -c " + cant + " -q";
 
     /*
         la siguiente seccion se encarga de generar los pings
@@ -58,42 +59,54 @@ void createPing(ping ping, string cant)
     {
         throw std::runtime_error("El ping fallo");
     }
+    /*
+    PING 62.233.190.103 (62.233.190.103) 56(84) bytes of data.
 
-    // busca las posiciones de los valores relevantes
-    int transPos = result.find(" packets transmitted") - 1;
-    int recPos = result.find(" received") - 1;
-    int lossPos = result.find(" packet loss") - 2;
+    --- 62.233.190.103 ping statistics ---
+    5 packets transmitted, 0 received, 100% packet loss, time 4079ms
 
-    // copia y guarda el valor de los paquetes transmitidos
-    char aux[1];
-    result.copy(aux, 1, transPos);
-    ping.pSend = atoi(aux);
+    */
 
-    // copia y guarda el valor de los paquetes recividos
-    result.copy(aux, 1, recPos);
-    ping.pRec = atoi(aux);
-
-    // copia y guarda el valor de los paquetes perdidos
-    result.copy(aux, 1, lossPos);
-    ping.pLoss = atoi(aux);
-
-    if (ping.pRec >= 1)
+    // la siguiente seccion se encarga de buscar el valor de los paquetes recibidos
+    char * aux;
+    char * cantRec;
+    char *output = new char[result.length()+1];
+    strcpy(output,result.c_str());
+    aux=strtok(output," ");
+    do
     {
-        ping.state = "UP";
+        aux=strtok(NULL," ");
+        //cout<<aux<<endl;
+        if(strcmp(aux,"received,")==0){
+            //cout<<"cantRec: "<<cantRec<<endl;
+            ping->pRec=atoi(cantRec);
+        }else{
+            
+            cantRec=aux;
+        }
+    }while (strcmp(aux,"received,")!=0);
+    // guarda la cant de paquetes enviados
+    ping->pSend=atoi(cant.c_str());
+    // calcula y guarda la cantidad de paquetes perdidos
+    ping->pLoss=ping->pSend-ping->pRec;
+
+    if (ping->pRec >= 1)
+    {
+        ping->state = "UP";
     }
     else
     {
-        ping.state = "DOWN";
+        ping->state = "DOWN";
     }
 
     // imprime el resultado completo
-    if (ping.ip.length() >= 15)
+    if (ping->ip.length() >= 15)
     {
-        cout << ping.ip << " \t" << ping.pSend << " \t" << ping.pRec << " \t" << ping.pLoss << " \t" << ping.state << "\n";
+        cout << ping->ip << " \t" << ping->pSend << " \t" << ping->pRec << " \t" << ping->pLoss << " \t" << ping->state << "\n";
     }
     else
     {
-        cout << ping.ip << " \t\t" << ping.pSend << " \t" << ping.pRec << " \t" << ping.pLoss << " \t" << ping.state << "\n";
+        cout << ping->ip << " \t\t" << ping->pSend << " \t" << ping->pRec << " \t" << ping->pLoss << " \t" << ping->state << "\n";
     }
 }
 
@@ -115,22 +128,39 @@ int main(int argc, char *argv[])
 
     // manejo de strings
     std::string ip;
-
+    int count = 0;
     // si el archivo esta abierto
     if (ipFile.is_open())
     {
         // recorrer el archivo guardando las ip
-        int count = 0;
         while (ipFile.good())
         {
             // lee y guarda hasta el primer salto de linea
+            ipFile >> ip;
+            count++;
+        }
+    }
+
+    // reinicio del archivo para guardar las ips en el array de pings
+    // ipFile.clear();
+    // ipFile.seekg(0,std::ios::beg);
+    ipFile.close();
+    ipFile.open(argv[1]);
+
+    // creacion de array de pings
+    Ping pings[count];
+    count = 0;
+    if (ipFile.is_open())
+    {
+        while (ipFile.good())
+        {
             ipFile >> ip;
             pings[count].ip = ip;
             count++;
         }
     }
-
     /* Manejo de hilos */
+    cout << "ola" << endl;
     // creacion de hilos
     thread threads[MAX_THREAD];
 
@@ -140,16 +170,33 @@ int main(int argc, char *argv[])
     cout << "--------------------------------------------------------\n";
 
     // inicializacion de hilos con la funcion que ejecuta ping
-    for (int i = 0; i < MAX_THREAD; i++)
+    int restantes = count;
+    while (restantes > 0)
     {
-        threads[i] = std::thread(createPing, pings[i], cantPackages);
+        for (int i = 0; i < MAX_THREAD; i++)
+        {
+            threads[i] = std::thread(&createPing, &pings[i], cantPackages);
+            restantes--;
+        }
+
+        // sincronzando los hilos al main
+        for (int i = 0; i < MAX_THREAD; i++)
+        {
+            threads[i].join();
+        }
     }
 
-    // sincronzando los hilos al main
-    for (int i = 0; i < 5; i++)
-    {
-        threads[i].join();
-    }
+    // for (int i = 0; i < MAX_THREAD; i++)
+    // {
+    //     if (pings[i].ip.length() >= 15)
+    //     {
+    //         cout << pings[i].ip << " \t" << pings[i].pSend << " \t" << pings[i].pRec << " \t" << pings[i].pLoss << " \t" << pings[i].state << "\n";
+    //     }
+    //     else
+    //     {
+    //         cout << pings[i].ip << " \t\t" << pings[i].pSend << " \t" << pings[i].pRec << " \t" << pings[i].pLoss << " \t" << pings[i].state << "\n";
+    //     }
+    // }
 
     return 0;
 }
